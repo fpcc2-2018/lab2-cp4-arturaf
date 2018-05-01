@@ -1,3 +1,7 @@
+# Relatório Publicado
+
+O relatório foi publicado no RPubs e encontra-se neste [link](http://rpubs.com/arturaf/385337).
+
 # Seções, buscas e navegação na wikimedia
 
 Este repo é a semente para uma análise de padrões de busca e navegação em páginas de projetos da wikimedia (provavelmente wikipedia).
