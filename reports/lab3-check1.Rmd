@@ -1,0 +1,239 @@
+---
+title: "| Fundamentos de Pesquisa em Ciência da Computação 2\n|  \n| Lab 3, Checkpoint
+  1\n| Artur Alves de Farias\n|  \n"
+output:
+  html_document:
+    df_print: paged
+---
+
+```{r setup, echo=FALSE, message=FALSE}
+library(tidyverse)
+library(here)
+library(lubridate)
+library(resample)
+library(boot)
+
+theme_set(theme_bw())
+```
+
+**Objetivo:** Produza uma versão resumida do relatório que você fez para o Lab 2, CP 4, que:
+
+1. responde as 3 primeiras perguntas da tarefa original utilizando inferência estatística realizada através de intervalos de confiança e bootstrap.
+
+2. testa o que acontece se para a pergunta 1, em vez de comparar o grupo A com o grupo B (um teste A/B), você compara metade das sessões do grupo A (escolhida aleatoriamente) com outra metade das sessões do mesmo grupo (um teste A/A).
+
+Ressalte em seu relatório a conclusão possível sobre a população que você está fazendo a partir da inferência.  Lembre de escrever uma frase com o vocabulário do domínio do problema explicando seu achado, e de formalizá-la em nível de confiança. Comente tanto significância (estatística) quanto relevância prática de diferenças que você venha a encontrar. 
+
+## Preparação dos dados
+
+Por se tratar de uma versão resumida do relatório, a preparação dos dados não será explanada pois se trata dos mesmos dados do relatório Lab 2, Checkpoint 4.
+
+Aqui temos o passo que lê os dados já tratados:
+
+```{r, message=FALSE}
+searches = read_csv("../data/search_data.csv")
+```
+
+## 1. Qual a taxa de clique geral diária? Como ela varia entre os grupos?
+
+Considerando a análise prévia dos dados contida no relatório anterior, iremos utilizar o mesmo conceito para **taxa de cliques**.
+
+```{r, message=FALSE}
+searches_with_results = searches %>% 
+    filter(results > 0)
+
+searches_with_results = searches_with_results %>% 
+    filter(!(num_clicks > 0 && (is.na(first_click) | first_click <= results)))
+```
+
+## 1.1 Qual a taxa de cliques geral diária?
+
+Para calcular a taxa de cliques geral diária através de **bootstraps** e **intervalo de confiança**, precisamos retirar uma amostra primeiramente.
+
+```{r, message=FALSE}
+clicks_by_date = searches_with_results %>%
+    mutate(has_click = num_clicks > 0)
+
+sample.clicks_by_date = sample_n(clicks_by_date, 1000)
+```
+
+Por fim, aplicaremos o **bootstrap**:
+
+```{r}
+
+bootstrap.funcao.mean <- function(x, i) {
+    mean(x[i])
+}
+
+set.seed(1)
+
+bootstrap.result.has_click <- boot(data = sample.clicks_by_date$has_click, 
+                 statistic = bootstrap.funcao.mean, 
+                 R = 5000)
+
+boot.ci(boot.out = bootstrap.result.has_click, conf = 0.95, type = "basic")
+```
+
+**Conclusão**: Após aplicar o bootstrap em 5000 amostras, temos que para o intervalo de confiança de 95%, a taxa fica entre **25% e 31%**, condizente com o relatório do Lab 2, onde o resultado foi de **29,9%**.
+
+## 1.2 Como ela varia entre os grupos?
+
+Agora, será calculada através de grupos. Deste modo, **separaremos** as amostras por grupo "a" e por grupo "b".
+
+Primeiramente, o grupo "a".
+
+```{r}
+clicks_by_group_a = clicks_by_date %>%
+    filter(group == "a")
+
+set.seed(1)
+
+sample.group.a = sample_n(clicks_by_group_a, 1000)
+
+bootstrap.result.group.a <- boot(data = sample.group.a$has_click, 
+                 statistic = bootstrap.funcao.mean, 
+                 R = 5000)
+
+boot.ci(boot.out = bootstrap.result.group.a, conf = 0.95, type = "basic")
+```
+
+Agora, o grupo "b":
+
+```{r}
+clicks_by_group_b = clicks_by_date %>%
+    filter(group == "b")
+
+set.seed(1)
+
+sample.group.b = sample_n(clicks_by_group_b, 1000)
+
+bootstrap.result.group.b <- boot(data = sample.group.b$has_click, 
+                 statistic = bootstrap.funcao.mean, 
+                 R = 5000)
+
+boot.ci(boot.out = bootstrap.result.group.b, conf = 0.95, type = "basic")
+```
+
+**Conclusão**: Após aplicar o bootstrap em 5000 amostras para cada um dos grupos, temos que para o intervalo de confiança de 95%, a taxa para o grupo "a" é entre **29% e 34%** enquanto para o grupo "b" entre **18% e 23%**. Se compararmos com o relatório anterior, o grupo "a" teve taxa de **35%**, enquanto o grupo "b" teve taxa de **18%**.
+
+## 2. Quais resultados as pessoas tendem a tentar primeiro?
+
+Utilizando a variável de **primeiro clique**, temos:
+
+```{r}
+first_clicks_searches = searches %>%
+    ungroup() %>%
+    filter(!is.na(first_click))
+```
+
+Retirando a amostra e aplicando o bootstrap:
+
+```{r}
+set.seed(1)
+
+sample.first_clicks = sample_n(first_clicks_searches, 2000)
+
+bootstrap.result.first_clicks <- boot(data = sample.first_clicks$first_click, 
+                 statistic = bootstrap.funcao.mean, 
+                 R = 5000)
+
+boot.ci(boot.out = bootstrap.result.first_clicks, conf = 0.95, type = "basic")
+```
+
+**Conclusão**: Após aplicar bootstrap em 5000 amostras baseadas em uma amostra inicial de 2000 itens, temos que para um intervalo de confiança de 95%, os usuários tenderam a clicar primeiramente mais entre os índices **1 e 8**.
+
+## 3. Qual é a nossa taxa com resultados zerados geral diária? Como ela varia entre os grupos?
+
+Relembrando o relatório anterior: A Wikimedia diz que *zero results*, ou seja, resultados zerados é quando a busca retorna 0 resultados. A proporção deste é quantas buscas obtiveram 0 resultados dentro de todas as buscas realizadas.
+
+## 3.1 Qual é a nossa taxa com resultados zerados geral diária?
+
+Agrupando por **data** e calculando a **média** de buscas sem resultados, temos:
+
+```{r}
+searches_with_zero_results_var = searches %>%
+    mutate(zero_results = (results == 0))
+
+set.seed(1)
+
+sample.zero_results = sample_n(searches_with_zero_results_var, 2000)
+
+bootstrap.result.zero_results <- boot(data = sample.zero_results$zero_results, 
+                 statistic = bootstrap.funcao.mean, 
+                 R = 5000)
+
+boot.ci(boot.out = bootstrap.result.zero_results, conf = 0.95, type = "basic")
+```
+
+**Conclusão**: De uma amostra de 2000 itens que apresentavam a variável **zero_results**, foi aplicado o bootstrap 5000 vezes. Para o intervalo de confiança de 95%, foi obtido que a taxa está contida entre **17% e 20%**. Segundo o relatório anterior, a taxa era de **18%**.
+
+## 3.2 Como ela varia entre os grupos?
+
+Agora, será calculada através de grupos. Deste modo, **separaremos** as amostras por grupo "a" e por grupo "b".
+
+Primeiramente, o grupo "a".
+
+```{r}
+zero_results_by_group_a = searches_with_zero_results_var %>%
+    filter(group == "a")
+
+set.seed(1)
+
+sample.zero_results.group.a = sample_n(searches_with_zero_results_var, 2000)
+
+bootstrap.result.zero_results.group_a <- boot(data = sample.zero_results.group.a$zero_results, 
+                 statistic = bootstrap.funcao.mean, 
+                 R = 5000)
+
+boot.ci(boot.out = bootstrap.result.zero_results.group_a, conf = 0.95, type = "basic")
+```
+
+Agora, o grupo "b":
+
+```{r}
+zero_results_by_group_b = searches_with_zero_results_var %>%
+    filter(group == "b")
+
+set.seed(1)
+
+sample.zero_results.group.b = sample_n(searches_with_zero_results_var, 2000)
+
+bootstrap.result.zero_results.group_b <- boot(data = sample.zero_results.group.b$zero_results, 
+                 statistic = bootstrap.funcao.mean, 
+                 R = 5000)
+
+boot.ci(boot.out = bootstrap.result.zero_results.group_b, conf = 0.95, type = "basic")
+```
+
+**Conclusão**: No relatório anterior, ambos grupos obtiveram como taxa de resultados zerados bem próximos a **18%**. Após aplicarmos o bootstrap em 5000 casos, com um intervalo de confiança de 95%, temos que a taxa está em torno de **16% a 20%**, reforçando assim o resultado anterior.
+
+## EXTRA: O que acontece se para a pergunta 1, em vez de comparar o grupo A com o grupo B (um teste A/B), você compara metade das sessões do grupo A (escolhida aleatoriamente) com outra metade das sessões do mesmo grupo (um teste A/A).
+
+Dividindo os dados de A pela metade temos:
+
+```{r}
+group_a1 = head(clicks_by_group_a, nrow(clicks_by_group_a) / 2)
+group_a2 = tail(clicks_by_group_a, nrow(clicks_by_group_a) / 2)
+
+```
+
+Com cada metade dos dados apenas do grupo A, iremos extrair amostras de cada metade. Assim, temos um teste A/A:
+
+```{r}
+set.seed(1)
+
+sample.group.a1 = sample_n(group_a1, 2000)
+sample.group.a2 = sample_n(group_a2, 2000)
+
+bootstrap.result.group.a1 <- boot(data = sample.group.a1$has_click, 
+                 statistic = bootstrap.funcao.mean, 
+                 R = 5000)
+
+bootstrap.result.group.a2 <- boot(data = sample.group.a2$has_click, 
+                 statistic = bootstrap.funcao.mean, 
+                 R = 5000)
+
+boot.ci(boot.out = bootstrap.result.group.a1, conf = 0.95, type = "basic")
+boot.ci(boot.out = bootstrap.result.group.a2, conf = 0.95, type = "basic")
+```
+**Conclusão**: Após o cálculo realizando o teste A/A, **não** foi verificado uma diferença muito grande na proporção do intervalo. Porém, foi possível notar que os intervalos variam quanto à direção, enquanto na 1ª amostra foi para baixo, na 2ª foi para cima. Ou seja, na segunda amostra a taxa de cliques aparentemente foi maior que a primeira amostra.

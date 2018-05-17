@@ -1,6 +1,8 @@
 # Relatório Publicado
 
-O relatório foi publicado no RPubs e encontra-se neste [link](http://rpubs.com/arturaf/385337).
+O relatório [Lab 2, Checkpoint 4] foi publicado no RPubs e encontra-se neste [link](http://rpubs.com/arturaf/385337).
+
+O relatório [Lab 3, Checkpoint 1] foi publicado no RPubs e encontra-se neste [link](http://rpubs.com/arturaf/390117).
 
 # Seções, buscas e navegação na wikimedia
 
