@@ -4,6 +4,8 @@ O relatório [Lab 2, Checkpoint 4] foi publicado no RPubs e encontra-se neste [l
 
 O relatório [Lab 3, Checkpoint 1] foi publicado no RPubs e encontra-se neste [link](http://rpubs.com/arturaf/390117).
 
+O relatório [Lab 3, Checkpoint 4] foi publicado no RPubs e encontra-se neste [link](http://rpubs.com/arturaf/392674).
+
 # Seções, buscas e navegação na wikimedia
 
 Este repo é a semente para uma análise de padrões de busca e navegação em páginas de projetos da wikimedia (provavelmente wikipedia).
