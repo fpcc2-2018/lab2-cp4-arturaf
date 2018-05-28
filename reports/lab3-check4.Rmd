@@ -1,0 +1,98 @@
+---
+title: "| Fundamentos de Pesquisa em Ciência da Computação 2\n|  \n| Lab 3, Checkpoint
+  4\n| Artur Alves de Farias\n|  \n"
+output:
+  html_document:
+    df_print: paged
+---
+
+```{r setup, echo=FALSE, message=FALSE}
+library(tidyverse)
+library(here)
+library(lubridate)
+library(resample)
+
+theme_set(theme_bw())
+```
+
+**Objetivo:** Para este checkpoint, revisite em um novo relatório duas das perguntas que você respondeu utilizando ICs no CP 1, e as responda utilizando um teste de hipótese com permutação. Seu relatório deve: 
+
+1. Descrever seu teste: o que está sendo comparado? Qual a permutação sendo feita?
+
+2. Relatar seu resultado: a diferença é significativa? Qual o p-valor? Reporte segundo as boas práticas dos materiais aqui do canvas.
+
+3. Comentar sobre as vantagens e desvantagens que você vê no resultado ao qual chegou agora e utilizando ICs para as mesmas perguntas. 
+
+
+## Preparação dos dados
+
+Por se tratar de uma versão resumida do relatório, a preparação dos dados não será explanada pois se trata dos mesmos dados do relatório Lab 3, Checkpoint 1.
+
+Aqui temos o passo que lê os dados já tratados:
+
+```{r, message=FALSE}
+searches = read_csv("../data/search_data.csv")
+```
+
+## P1. Qual a taxa de clique geral diária entre os grupos?
+
+Considerando a análise prévia dos dados contida no relatório anterior, iremos utilizar o mesmo conceito para **taxa de cliques**.
+
+```{r, message=FALSE}
+searches_with_results = searches %>% 
+    filter(results > 0)
+
+searches_with_results = searches_with_results %>% 
+    filter(!(num_clicks > 0 && (is.na(first_click) | first_click <= results)))
+```
+
+Agora, iremos realizar a análise através do teste de hipótese. Para tal, definiremos primeiro a hipótese nula.
+
+Como no relatório anterior, obtivemos que havia diferença significativa entre os grupos, temos:
+
+**Hipótese Nula:** Não existe diferença na taxa de cliques geral diária entre os grupos A e B.
+
+Realizando as permutações:
+
+```{r}
+set.seed(2)
+
+searches_by_group = searches_with_results %>%
+    mutate(has_click = num_clicks > 0)
+
+permutationTest2(searches_by_group, mean(has_click), treatment = group)
+```
+
+**Análise**: O resultado indica um **p-value** inferior a 0,05, onde a hipótese nula é **rejeitada**. Ou seja, podemos afirmar que **há sim diferença** entre os grupos A e B para a taxa de cliques geral diária.
+
+## P2. Qual é a nossa taxa com resultados zerados geral diária entre os grupos?
+
+Relembrando o relatório anterior: A Wikimedia diz que *zero results*, ou seja, resultados zerados é quando a busca retorna 0 resultados. A proporção deste é quantas buscas obtiveram 0 resultados dentro de todas as buscas realizadas.
+
+```{r}
+searches_with_zero_results_var = searches %>%
+    mutate(zero_results = (results == 0))
+
+```
+
+Aplicando o teste de hipótese, precisamos definir a hipótese nula.
+
+Como vamos comparar as **médias** da taxa de resultados zeros entre os grupos A e B, precisamos definir a hipótese de forma que indique se há diferença significativa entre elas ou não.
+
+No checkpoint anterior, após inferências via intervalos de confiança, foi afirmado que **não havia** diferenças significativas.
+
+**Hipótese Nula:** Não existe diferença na taxa com resultados zerados entre os grupos A e B.
+
+```{r}
+permutationTest2(searches_with_zero_results_var, mean(zero_results), treatment = group)
+```
+
+**Análise**: O resultado indica um **p-value** próximo a 0,12, ou seja, superior a 0,05. Neste caso, **não podemos rejeitar** a hipótese nula. Desta forma, podemos afirmar que não há diferença significativa entre os grupos A e B, com um intervalo de confiança de 95%.
+
+## Comentário
+
+Uma grande vantagem, para mim, é que o resultado parece mais legível. É definido uma hipótese nula e após poucas linhas de código, temos um valor "sumarizado" que indica se a hipótese deve ser rejeitada ou não. Ou seja, fica um jeito mais sintético, pois é gerado um valor que é determinante.
+
+A desvantagem que eu achei, foi o fato da demora para realização das permutações. Se supormos que queremos validar várias hipóteses, ou tivermos que fazer ajustes no decorrer da análise, o tempo que se perde esperando as permutações é bem significativo.
+
+
